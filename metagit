@@ -277,7 +277,7 @@ sub unpack_commit {
     for my $parent (@parents) {
 	my $id = $parent->id;
 	$knownids{$id}++;
-	symlink_relative($unp->{dir} . "/commit/$id", "$outdir/parents/$i");
+	symlink_relative($unp->{dir} . "/object/$id", "$outdir/parents/$i");
 	$i++;
     }
     my $id = $o->tree->id;
@@ -403,7 +403,7 @@ sub unpack_reflog_dir {
     my ($unp, $o, $outdir) = @_;
 
     make_path($outdir);
-    @entries = $o->entries;
+    my @entries = $o->entries;
     my $i = scalar(@entries);
     for my $entry ($o->entries) {
 	my $gitseconds = $entry->{committer}->time;
@@ -579,7 +579,7 @@ sub run_meta_command {
 				     return 0;
 				 });
 
-	for my $id (sort keys %knownids) {
+	for my $id (read_dir(".metagit/commit")) {
 	    if (-d ".metagit/commit/$id") {
 		for (my $pid = 1; -l ".metagit/commit/$id/parents/$pid"; $pid++) {
 		    system("cd .metagit/commit/$id; mkdir -p diff; diff -urN parents/$pid/tree-full tree-full > diff/$pid");
