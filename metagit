@@ -522,8 +522,6 @@ sub unpack_repo {
     $unp->{discover} = sub {
 	my ($id) = @_;
 
-	warn "discovered $id";
-
 	$knownids{$id}++;
     };
 
