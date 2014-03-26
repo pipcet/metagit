@@ -182,6 +182,7 @@ use Getopt::Long qw(GetOptions GetOptionsFromString :config auto_version auto_he
 use File::PathConvert qw(abs2rel rel2abs);
 use File::Copy::Recursive qw(fcopy);
 use DateTime;
+use File::Slurp qw(slurp read_dir);
 
 sub format_iso8601 {
     my ($unixseconds) = @_;
@@ -527,26 +528,9 @@ sub new {
     return $unp;
 }
 
-package main;
-
-sub run_git_command {
-    my @args = @_;
-
-    die if grep { /'/ } @args;
-
-    system("git " . join(" ", map { "'$_'" } @args));
-    my $status = $?;
-
-    exit($status);
-}
-
-sub run_meta_command {
-    my ($verb, @args) = @_;
-
-    die if grep { /'/ } @args;
-
-    if ($verb eq "unpack") {
-	my $unp = new Unpacker($repository, ".metagit");
+sub unpack_repository {
+    my ($unp, $repo, $outdir) = @_;
+    die unless $unp->{repo} == $repo;
 
 	my $didsomething;
 	do {
@@ -582,36 +566,86 @@ sub run_meta_command {
 	for my $id (read_dir(".metagit/commit")) {
 	    if (-d ".metagit/commit/$id") {
 		for (my $pid = 1; -l ".metagit/commit/$id/parents/$pid"; $pid++) {
-		    system("cd .metagit/commit/$id; mkdir -p diff; diff -urN parents/$pid/tree-full tree-full > diff/$pid");
+		    system("cd .metagit/commit/$id; mkdir -p diff; diff -urN parents/$pid/tree-full tree-full > diff/$pid.diff");
 		}
 	    }
 	}
-	exit(0);
-    }
-    if ($verb eq "pack") {
-	system("mkdir metadotgit; git clone . metadotgit");
-	my $repo = Git::Raw::Repository->open("metadotgit");
 
-	my $packer = Packer->new($repo);
+}
 
-	for my $id (read_dir(".metagit/commit")) {
-	    if (-d ".metagit/commit/$id") {
-		$packer->pack_commit(".metagit/commit/$id");
-	    }
+package main;
+
+sub run_git_command {
+    my @args = @_;
+
+    die if grep { /'/ } @args;
+
+    system("git " . join(" ", map { "'$_'" } @args));
+    my $status = $?;
+
+    exit($status);
+}
+
+my %meta_commands;
+
+use Attribute::Handlers;
+
+sub meta_command :ATTR(CODE) {
+    my ($class, $symbol, $referent, $attr, $data) = @_;
+    my $name = substr(*{$symbol}, 1);
+    $name =~ s/^.*(::)//;
+    $name =~ s/^meta_//;
+
+    $meta_commands{$name} = $referent;
+}
+
+sub meta_unpack :meta_command {
+    my (@args) = @_;
+    my $unp = new Unpacker($repository, ".metagit");
+
+    $unp->unpack_repository($repository, ".metagit");
+
+    exit(0);
+}
+
+sub meta_pack :meta_command {
+    my (@args) = @_;
+
+    system("mkdir metadotgit; git clone . metadotgit");
+    my $repo = Git::Raw::Repository->open("metadotgit");
+
+    my $packer = Packer->new($repo);
+
+    for my $id (read_dir(".metagit/commit")) {
+	if (-d ".metagit/commit/$id") {
+	    $packer->pack_commit(".metagit/commit/$id");
 	}
-	exit(0);
     }
-    if ($verb eq "addparent") {
-	my ($child, $parent) = @args;
+    exit(0);
+}
 
-	die unless -d ".metagit/commit/$child" and -d ".metagit/commit/$parent";
+sub meta_addparent :meta_command {
+    my (@args) = @_;
 
-	my $i = max(read_dir(".metagit/commit/$child/parents")) + 1;
+    my ($child, $parent) = @args;
 
-	symlink("../../../commit/$parent", ".metagit/commit/$child/parents/$i");
+    die unless -d ".metagit/commit/$child" and -d ".metagit/commit/$parent";
 
-	exit(0);
-    }
+    my $i = max(read_dir(".metagit/commit/$child/parents")) + 1;
+
+    symlink("../../../commit/$parent", ".metagit/commit/$child/parents/$i");
+
+    exit(0);
+}
+
+sub run_meta_command {
+    my ($verb, @args) = @_;
+
+    die if grep { /'/ } @args;
+
+    die "unknown command $verb" unless $meta_commands{$verb};
+
+    $meta_commands{$verb}(@args);
 }
 
 while(my $arg = shift(@ARGV)) {
@@ -629,6 +663,4 @@ while(my $arg = shift(@ARGV)) {
     } else {
 	return run_git_command($arg, @ARGV);
     }
-
-
 }
