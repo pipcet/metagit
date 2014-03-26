@@ -588,7 +588,11 @@ sub run_git_command {
 
     die if grep { /'/ } @args;
 
+    meta_pack();
     system("git " . join(" ", map { "'$_'" } @args));
+    meta_unpack();
+    meta_commit();
+
     my $status = $?;
 
     exit($status);
@@ -605,6 +609,11 @@ sub meta_command :ATTR(CODE) {
     $name =~ s/^meta_//;
 
     $meta_commands{$name} = $referent;
+}
+
+sub meta_commit :meta_command {
+    system("git add --all .metagit");
+    system("git commit -m 'meta-commit'");
 }
 
 sub meta_unpack :meta_command {
