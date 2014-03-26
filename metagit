@@ -627,7 +627,7 @@ while(my $arg = shift(@ARGV)) {
 	$arg = shift(@ARGV);
 	return run_meta_command($arg, @ARGV);
     } else {
-	return run_git_command(@ARGV);
+	return run_git_command($arg, @ARGV);
     }
 
 
