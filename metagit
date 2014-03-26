@@ -12,12 +12,7 @@ use List::Util qw(min max);
 use Git::Raw;
 use Carp::Always;
 
-my $repository = Git::Raw::Repository->open(".");
-my $head = $repository->head;
-my $commit = $head->target;
 my %knownids;
-
-$knownids{$commit->id}++;
 
 # all ancestor directories of a path
 sub prefixes {
@@ -528,48 +523,49 @@ sub new {
     return $unp;
 }
 
-sub unpack_repository {
+sub unpack_repo {
     my ($unp, $repo, $outdir) = @_;
     die unless $unp->{repo} == $repo;
+    $knownids{$repo->head->target->id} = 1;
 
-	my $didsomething;
-	do {
-	    $didsomething = 0;
-	    for my $id (sort keys %knownids) {
-		$didsomething += $unp->unpack_maybe($id)
+    my $didsomething;
+    do {
+	$didsomething = 0;
+	for my $id (sort keys %knownids) {
+	    $didsomething += $unp->unpack_maybe($id)
+	}
+    } while($didsomething);
+
+    for my $ref ($repo->refs) {
+	$unp->unpack_reference($ref, $unp->{dir} . "/ref/" . ($ref->name =~ s/\//_/msgr));
+    }
+
+    for my $tag ($repo->tags) {
+	$unp->unpack_tag($tag, $unp->{dir} . "/tag/" . ($tag->name =~ s/\//_/msgr));
+    }
+
+    for my $branch ($repo->branches) {
+	$unp->unpack_branch($branch, $unp->{dir} . "/branch/" . ($branch->name =~ s/\//_/msgr));
+    }
+
+    for my $remote ($repo->remotes) {
+	$unp->unpack_remote($remote, $unp->{dir} . "/remote/" . ($remote->name =~ s/\//_/msgr));
+    }
+
+    Git::Raw::Stash->foreach($repo,
+			     sub {
+				 my ($index, $message, $oid) = @_;
+				 $unp->unpack_stash($index, $message, $oid, ".metagit/stash/$index");
+				 return 0;
+			     });
+
+    for my $id (read_dir(".metagit/commit")) {
+	if (-d ".metagit/commit/$id") {
+	    for (my $pid = 1; -l ".metagit/commit/$id/parents/$pid"; $pid++) {
+		system("cd .metagit/commit/$id; mkdir -p diff; diff -urN parents/$pid/tree-full tree-full > diff/$pid.diff");
 	    }
-	} while($didsomething);
-
-	for my $ref ($repository->refs) {
-	    $unp->unpack_reference($ref, $unp->{dir} . "/ref/" . ($ref->name =~ s/\//_/msgr));
 	}
-
-	for my $tag ($repository->tags) {
-	    $unp->unpack_tag($tag, $unp->{dir} . "/tag/" . ($tag->name =~ s/\//_/msgr));
-	}
-
-	for my $branch ($repository->branches) {
-	    $unp->unpack_branch($branch, $unp->{dir} . "/branch/" . ($branch->name =~ s/\//_/msgr));
-	}
-
-	for my $remote ($repository->remotes) {
-	    $unp->unpack_remote($remote, $unp->{dir} . "/remote/" . ($remote->name =~ s/\//_/msgr));
-	}
-
-	Git::Raw::Stash->foreach($repository,
-				 sub {
-				     my ($index, $message, $oid) = @_;
-				     $unp->unpack_stash($index, $message, $oid, ".metagit/stash/$index");
-				     return 0;
-				 });
-
-	for my $id (read_dir(".metagit/commit")) {
-	    if (-d ".metagit/commit/$id") {
-		for (my $pid = 1; -l ".metagit/commit/$id/parents/$pid"; $pid++) {
-		    system("cd .metagit/commit/$id; mkdir -p diff; diff -urN parents/$pid/tree-full tree-full > diff/$pid.diff");
-		}
-	    }
-	}
+    }
 
 }
 
@@ -601,9 +597,10 @@ sub meta_command :ATTR(CODE) {
 
 sub meta_unpack :meta_command {
     my (@args) = @_;
-    my $unp = new Unpacker($repository, ".metagit");
+    my $repo = Git::Raw::Repository->open(".");
+    my $unp = new Unpacker($repo, ".metagit");
 
-    $unp->unpack_repository($repository, ".metagit");
+    $unp->unpack_repo($repo, ".metagit");
 
     exit(0);
 }
