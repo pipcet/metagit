@@ -629,6 +629,8 @@ sub meta_unpack :meta_command {
 sub meta_pack :meta_command {
     my (@args) = @_;
 
+    return unless -d ".metagit/commit";
+
     system("mkdir metadotgit; git clone . metadotgit");
     my $repo = Git::Raw::Repository->open("metadotgit");
 
