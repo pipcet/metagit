@@ -403,11 +403,12 @@ sub unpack_reflog_dir {
     my ($unp, $o, $outdir) = @_;
 
     make_path($outdir);
-    my $i = 1;
+    @entries = $o->entries;
+    my $i = scalar(@entries);
     for my $entry ($o->entries) {
 	my $gitseconds = $entry->{committer}->time;
 	my $isodate = format_iso8601($gitseconds);
-	$unp->unpack_reflog_entry($entry, "$outdir/$isodate-" . $i++);
+	$unp->unpack_reflog_entry($entry, "$outdir/$isodate-" . $i--);
     }
 }
 
