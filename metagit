@@ -12,8 +12,6 @@ use List::Util qw(min max);
 use Git::Raw;
 use Carp::Always;
 
-my %knownids;
-
 # all ancestor directories of a path
 sub prefixes {
     my ($path) = @_;
@@ -272,12 +270,12 @@ sub unpack_commit {
     my $i = 1;
     for my $parent (@parents) {
 	my $id = $parent->id;
-	$knownids{$id}++;
-	symlink_relative($unp->{dir} . "/object/$id", "$outdir/parents/$i");
+	$unp->{discover}->($id) if $unp->{discover};
+	symlink_relative($unp->require_object($id), "$outdir/parents/$i");
 	$i++;
     }
     my $id = $o->tree->id;
-    $knownids{$id}++;
+    $unp->{discover}->($id) if $unp->{discover};
     symlink_relative($unp->{dir} . "/tree-full/$id", "$outdir/tree-full");
     symlink_relative($unp->{dir} . "/tree-minimal/$id", "$outdir/tree-minimal");
 
@@ -498,8 +496,9 @@ sub require_object {
     if (!-l "$outdir/object/$id" and !-e "$outdir/object/$id") {
 	my $repo = $unp->{repo};
 
+	$unp->{discover}->($id) if $unp->{discover};
+
 	$unp->unpack_object($repo->lookup($id), $outdir);
-	return 1;
     }
 
     return "$outdir/object/$id";
@@ -514,18 +513,20 @@ sub unpack_stash {
     symlink_relative($unp->{dir} . "/object/$oid", "$outdir/commit");
 }
 
-sub new {
-    my ($class, $repo, $dir) = @_;
-    my $unp = { repo => $repo, dir => rel2abs($dir) };
-
-    bless $unp, $class;
-
-    return $unp;
-}
-
 sub unpack_repo {
     my ($unp, $repo, $outdir) = @_;
     die unless $unp->{repo} == $repo;
+
+    my %knownids;
+
+    $unp->{discover} = sub {
+	my ($id) = @_;
+
+	warn "discovered $id";
+
+	$knownids{$id}++;
+    };
+
     $knownids{$repo->head->target->id} = 1;
 
     my $didsomething;
@@ -567,6 +568,17 @@ sub unpack_repo {
 	}
     }
 
+}
+
+}
+
+sub new {
+    my ($class, $repo, $dir) = @_;
+    my $unp = { repo => $repo, dir => rel2abs($dir) };
+
+    bless $unp, $class;
+
+    return $unp;
 }
 
 package main;
