@@ -544,7 +544,7 @@ sub run_meta_command {
 
     die if grep { /'/ } @args;
 
-    if ($arg eq "unpack") {
+    if ($verb eq "unpack") {
 	my $unp = new Unpacker($repository, ".metagit");
 
 	my $didsomething;
@@ -587,7 +587,7 @@ sub run_meta_command {
 	}
 	exit(0);
     }
-    if ($arg eq "pack") {
+    if ($verb eq "pack") {
 	system("mkdir metadotgit; git clone . metadotgit");
 	my $repo = Git::Raw::Repository->open("metadotgit");
 
@@ -600,8 +600,8 @@ sub run_meta_command {
 	}
 	exit(0);
     }
-    if ($arg eq "addparent") {
-	my ($child, $parent) = @ARGV;
+    if ($verb eq "addparent") {
+	my ($child, $parent) = @args;
 
 	die unless -d ".metagit/commit/$child" and -d ".metagit/commit/$parent";
 
