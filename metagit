@@ -561,15 +561,15 @@ sub unpack_repo {
 			     });
 
     for my $id (read_dir(".metagit/commit")) {
-	if (-d ".metagit/commit/$id") {
-	    for (my $pid = 1; -l ".metagit/commit/$id/parents/$pid"; $pid++) {
-		system("cd .metagit/commit/$id; mkdir -p diff; diff -urN parents/$pid/tree-full tree-full > diff/$pid.diff");
-	    }
+	my @pid = read_dir(".metagit/commit/$id/parents/");
+	for my $pid (@pid) {
+	    system("cd .metagit/commit/$id; mkdir -p diff; diff -urN parents/$pid/tree-full tree-full > diff/$pid.diff");
+	}
+
+	if (!@pid) {
+	    system("cd .metagit/commit/$id; mkdir -p parents/0/tree-full; mkdir -p diff; diff -urN parents/0/tree-full tree-full > diff/0.diff; rm -rf parents/0");
 	}
     }
-
-}
-
 }
 
 sub new {
