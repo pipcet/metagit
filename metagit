@@ -287,8 +287,8 @@ sub unpack_tree_entry_minimal {
 
     make_path(xdirname($outdir));
 
-    my $filemode = $o->filemode;
-    write_file("$outdir/filemode", $filemode);
+    my $filemode = $o->file_mode;
+    write_file("$outdir/filemode", sprintf("%06o", $filemode);
 
     my $id = $o->id;
     symlink_relative($unp->require_object($id), "$outdir/object");
@@ -313,14 +313,14 @@ sub unpack_tree_entry_full {
 
     make_path(xdirname($outdir));
 
-    my $filemode = $o->filemode;
+    my $filemode = $o->file_mode;
 
-    if ($filemode eq "100644") {
+    if ($filemode == 0100644) {
 	write_file($outdir, $o->object->content);
-    } elsif ($filemode eq "100755") {
+    } elsif ($filemode == 0100755) {
 	write_file($outdir, $o->object->content);
 	chmod(0755, $outdir);
-    } elsif ($filemode eq "040000") {
+    } elsif ($filemode == 040000) {
 	$unp->unpack_tree_full($o->object, $outdir);
     } else {
 	die "filemode $filemode";
