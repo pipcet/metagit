@@ -322,8 +322,10 @@ sub unpack_tree_entry_full {
 	chmod(0755, $outdir);
     } elsif ($filemode == 040000) {
 	$unp->unpack_tree_full($o->object, $outdir);
+    } elsif ($filemode == 0120000) {
+	# symlink($o->object->content, $outdir); # XXX symlink
     } else {
-	die "filemode $filemode";
+	die "filemode ". sprintf("%06o", $filemode);
     }
 
     return $outdir;
