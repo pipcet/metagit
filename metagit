@@ -650,8 +650,7 @@ sub meta_pack :meta_command {
 
     return unless -d ".metagit/commit";
 
-    system("mkdir metadotgit; git clone . metadotgit");
-    my $repo = Git::Raw::Repository->open("metadotgit");
+    my $repo = Git::Raw::Repository->init(".", 0);
 
     my $packer = Packer->new($repo);
 
