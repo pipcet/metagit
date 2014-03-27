@@ -609,10 +609,10 @@ sub run_git_command {
 
     meta_pack();
     system("git " . join(" ", map { "'$_'" } @args));
+    my $status = $?;
     meta_unpack();
     meta_commit();
 
-    my $status = $?;
 
     exit($status);
 }
