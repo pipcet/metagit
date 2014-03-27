@@ -288,7 +288,7 @@ sub unpack_tree_entry_minimal {
     make_path(xdirname($outdir));
 
     my $filemode = $o->file_mode;
-    write_file("$outdir/filemode", sprintf("%06o", $filemode);
+    write_file("$outdir/filemode", sprintf("%06o", $filemode));
 
     my $id = $o->id;
     symlink_relative($unp->require_object($id), "$outdir/object");
