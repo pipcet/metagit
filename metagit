@@ -533,9 +533,15 @@ sub unpack_repo {
     do {
 	$didsomething = 0;
 	for my $id (sort keys %knownids) {
-	    $didsomething += $unp->unpack_maybe($id)
+	    $didsomething += $unp->unpack_maybe($id);
 	}
     } while($didsomething);
+
+    for my $id (sort keys %knownids) {
+	die $id unless -l $unp->{dir} . "/object/$id";
+    }
+
+    $unp->unpack_reference($repo->head, $unp->{dir} . "/head");
 
     for my $ref ($repo->refs) {
 	$unp->unpack_reference($ref, $unp->{dir} . "/ref/" . ($ref->name =~ s/\//_/msgr));
@@ -560,10 +566,23 @@ sub unpack_repo {
 				 return 0;
 			     });
 
+    my $didsomething;
+    do {
+	$didsomething = 0;
+	for my $id (sort keys %knownids) {
+	    $didsomething += $unp->unpack_maybe($id);
+	}
+    } while($didsomething);
+
+    for my $id (sort keys %knownids) {
+	die $id unless -l $unp->{dir} . "/object/$id";
+    }
+
     for my $id (read_dir(".metagit/commit")) {
 	my @pid = read_dir(".metagit/commit/$id/parents/");
 	for my $pid (@pid) {
 	    system("cd .metagit/commit/$id; mkdir -p diff; diff -urN parents/$pid/tree-full tree-full > diff/$pid.diff");
+	    warn $id if ($?>>8) == 2;
 	}
 
 	if (!@pid) {
