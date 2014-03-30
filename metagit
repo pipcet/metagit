@@ -239,15 +239,26 @@ sub write_file {
     close($fh);
 }
 
+sub write_text_file {
+    my ($name, $value) = @_;
+    my $fh;
+
+    mkdirp(xdirname($name));
+
+    open($fh, ">$name") or die;
+    print $fh $value . "\n";
+    close($fh);
+}
+
 sub unpack_signature {
     my ($unp, $o, $outdir) = @_;
 
     make_path($outdir);
 
-    write_file("$outdir/name", $o->name);
-    write_file("$outdir/email", $o->email);
-    write_file("$outdir/time", $o->time);
-    write_file("$outdir/offset", $o->offset);
+    write_text_file("$outdir/name", $o->name);
+    write_text_file("$outdir/email", $o->email);
+    write_text_file("$outdir/time", $o->time);
+    write_text_file("$outdir/offset", $o->offset);
 
     return $outdir;
 }
@@ -258,7 +269,7 @@ sub unpack_commit {
 
     make_path($outdir);
 
-    write_file("$outdir/type", "commit");
+    write_text_file("$outdir/type", "commit");
     write_file("$outdir/message", $o->message);
     write_file("$outdir/raw_header", $o->raw_header);
 
@@ -288,7 +299,7 @@ sub unpack_tree_entry_minimal {
     make_path(xdirname($outdir));
 
     my $filemode = $o->file_mode;
-    write_file("$outdir/filemode", sprintf("%06o", $filemode));
+    write_text_file("$outdir/filemode", sprintf("%06o", $filemode));
 
     my $id = $o->id;
     symlink_relative($unp->require_object($id), "$outdir/object");
@@ -423,10 +434,10 @@ sub unpack_reference {
     my ($unp, $o, $outdir) = @_;
 
     make_path($outdir);
-    write_file("$outdir/name", $o->name);
-    write_file("$outdir/type", $o->type);
-    write_file("$outdir/is_branch", $o->is_branch);
-    write_file("$outdir/is_remote", $o->is_remote);
+    write_text_file("$outdir/name", $o->name);
+    write_text_file("$outdir/type", $o->type);
+    write_text_file("$outdir/is_branch", $o->is_branch);
+    write_text_file("$outdir/is_remote", $o->is_remote);
 
     if ($o->target->isa("Git::Raw::Reference")) {
 	$unp->unpack_reference($o->target, "$outdir/target");
@@ -440,10 +451,10 @@ sub unpack_branch {
     my ($unp, $o, $outdir) = @_;
 
     make_path($outdir);
-    write_file("$outdir/name", $o->name);
-    write_file("$outdir/type", $o->type);
-    write_file("$outdir/is_branch", $o->is_branch);
-    write_file("$outdir/is_remote", $o->is_remote);
+    write_text_file("$outdir/name", $o->name);
+    write_text_file("$outdir/type", $o->type);
+    write_text_file("$outdir/is_branch", $o->is_branch);
+    write_text_file("$outdir/is_remote", $o->is_remote);
     # this doesn't work at all for branches that do not have an upstream
     #$unp->unpack_reference($o->upstream, "$outdir/upstream");
 
@@ -459,8 +470,8 @@ sub unpack_tag {
     my ($unp, $o, $outdir) = @_;
 
     make_path($outdir);
-    write_file("$outdir/name", $o->name);
-    write_file("$outdir/message", $o->message);
+    write_text_file("$outdir/name", $o->name);
+    write_text_file("$outdir/message", $o->message);
     $unp->unpack_signature($o->tagger, "$outdir/tagger");
 
     if ($o->target->isa("Git::Raw::Reference")) {
@@ -474,8 +485,8 @@ sub unpack_remote {
     my ($unp, $o, $outdir) = @_;
 
     make_path($outdir);
-    write_file("$outdir/name", $o->name);
-    write_file("$outdir/url", $o->url);
+    write_text_file("$outdir/name", $o->name);
+    write_text_file("$outdir/url", $o->url);
 }
 
 sub unpack_maybe {
@@ -510,8 +521,8 @@ sub unpack_stash {
     my ($unp, $index, $message, $oid, $outdir) = @_;
     my $repo = $unp->{repo};
     make_path($outdir);
-    write_file("$outdir/index", $index);
-    write_file("$outdir/message", $message);
+    write_text_file("$outdir/index", $index);
+    write_text_file("$outdir/message", $message);
     symlink_relative($unp->{dir} . "/object/$oid", "$outdir/commit");
 }
 
